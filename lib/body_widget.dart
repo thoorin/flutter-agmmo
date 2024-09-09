@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
+import 'main.dart';
+
 class BodyWidget extends StatefulWidget {
   const BodyWidget({super.key});
 
@@ -81,8 +83,17 @@ class BodyWidgetState extends State<BodyWidget> {
     super.dispose();
   }
 
+  changeFile(bool isSignedIn) async {
+    final file = await localFile;
+    return file.writeAsString(isSignedIn.toString());
+  }
+
   @override
   Widget build(BuildContext context) {
+    String initialUrl = isLoggedIn == true
+        ? 'https://antigmmo.web.app/village.html'
+        : 'https://antigmmo.web.app/index.html';
+
     WebViewCookie cookie = const WebViewCookie(
       name: 'from',
       value: 'app',
@@ -96,6 +107,13 @@ class BodyWidgetState extends State<BodyWidget> {
             onMessageReceived: (JavaScriptMessage message) {
           _loadAd();
           _showAdCallback();
+        })
+        ..addJavaScriptChannel('AuthChannel', onMessageReceived: (message) {
+          if (message.message == 'signIn') {
+            changeFile(true);
+          } else if (message.message == 'signOut') {
+            changeFile(false);
+          }
         })
         ..setJavaScriptMode(JavaScriptMode.unrestricted)
         ..setNavigationDelegate(
@@ -111,7 +129,7 @@ class BodyWidgetState extends State<BodyWidget> {
           ),
         )
         ..loadRequest(
-          Uri.parse('https://antigmmo.web.app'),
+          Uri.parse(initialUrl),
         ),
     );
   }
