@@ -90,14 +90,13 @@ class BodyWidgetState extends State<BodyWidget> {
 
   @override
   Widget build(BuildContext context) {
-    String initialUrl = isLoggedIn == true
-        ? 'https://antigmmo.web.app/village.html'
-        : 'https://antigmmo.web.app/index.html';
+    String initialUrl =
+        isLoggedIn == true ? '$url/village.html' : '$url/index.html';
 
     WebViewCookie cookie = const WebViewCookie(
       name: 'from',
       value: 'app',
-      domain: 'antigmmo.web.app',
+      domain: url,
     );
     WebViewCookieManager().setCookie(cookie);
 

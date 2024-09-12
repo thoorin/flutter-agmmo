@@ -19,6 +19,8 @@ Future<File> get localFile async {
 
 bool? isLoggedIn;
 
+const String url = "http://antigmmo.web.app";
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   unawaited(MobileAds.instance.initialize());

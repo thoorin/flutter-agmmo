@@ -1,4 +1,4 @@
-package com.example.agmmo;
+package com.marekskreko.agmmo;
 
 import io.flutter.embedding.android.FlutterActivity;
 
