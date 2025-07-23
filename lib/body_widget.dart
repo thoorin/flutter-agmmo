@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -19,9 +20,7 @@ class BodyWidgetState extends State<BodyWidget> {
   bool _isMobileAdsInitializeCalled = false;
   WebViewController controller = WebViewController();
 
-  final String _adUnitId = Platform.isAndroid
-      ? 'ca-app-pub-2000110395725890/2400372673'
-      : 'ca-app-pub-3940256099942544/4411468910';
+  final String _adUnitId = 'ca-app-pub-2000110395725890/2400372673';
 
   @override
   void initState() {
@@ -93,17 +92,13 @@ class BodyWidgetState extends State<BodyWidget> {
     String initialUrl =
         isLoggedIn == true ? '$url/village.html' : '$url/index.html';
 
-    WebViewCookie cookie = const WebViewCookie(
-      name: 'from',
-      value: 'app',
-      domain: url,
-    );
-    WebViewCookieManager().setCookie(cookie);
+    bool cookieIsSet = false;
 
     return WebViewWidget(
       controller: controller
         ..addJavaScriptChannel('Ad',
             onMessageReceived: (JavaScriptMessage message) {
+          print('ad called');
           _loadAd();
           _showAdCallback();
         })
@@ -112,6 +107,12 @@ class BodyWidgetState extends State<BodyWidget> {
             changeFile(true);
           } else if (message.message == 'signOut') {
             changeFile(false);
+          }
+        })
+        ..addJavaScriptChannel('OnLoadedChannel', onMessageReceived: (message) {
+          if (!cookieIsSet) {
+            cookieIsSet = true;
+            controller.runJavaScript('window.mobileCookies()');
           }
         })
         ..setJavaScriptMode(JavaScriptMode.unrestricted)
