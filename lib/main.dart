@@ -6,6 +6,11 @@ import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:path_provider/path_provider.dart';
 
+bool? isLoggedIn;
+
+// const String url = "http://192.168.0.123:5500/src";
+const String url = "http://antigmmo.web.app";
+
 Future<String> get _localPath async {
   final directory = await getApplicationDocumentsDirectory();
 
@@ -16,11 +21,6 @@ Future<File> get localFile async {
   final path = await _localPath;
   return File('$path/localStorage.txt');
 }
-
-bool? isLoggedIn;
-
-// const String url = "http://192.168.0.123:5500/src";
-const String url = "http://antigmmo.web.app";
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -45,6 +45,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return const MaterialApp(
       title: 'AntiGraphicsMMO',
+      debugShowCheckedModeBanner: false,
       home: MainPage(),
     );
   }

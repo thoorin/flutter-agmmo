@@ -1,4 +1,4 @@
-ßmport 'dart:async';
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -23,20 +23,21 @@ class BodyWidgetState extends State<BodyWidget> {
   bool _isMobileAdsInitializeCalled = false;
   WebViewController controller = WebViewController();
   bool noConnection = false;
-  String initialUrl =
-      isLoggedIn == true ? '$url/village.html' : '$url/index.html';
+  String initialUrl = isLoggedIn == true ? '$url/village.html' : '$url/index.html';
+  bool areChannelsSet = false;
 
-  final String _adUnitId = 'ca-app-pub-2000110395725890/2400372673';
+  final String _adUnitId = Platform.isAndroid
+      ? 'ca-app-pub-2000110395725890/2400372673'
+      : 'ca-app-pub-2000110395725890/9093983582';
 
   @override
   void initState() {
-    super.initState();ß
+    super.initState();
     _initializeMobileAdsSDK();
   }
 
   void _showAdCallback() {
-    _rewardedInterstitialAd?.show(
-        onUserEarnedReward: (AdWithoutView view, RewardItem rewardItem) {
+    _rewardedInterstitialAd?.show(onUserEarnedReward: (AdWithoutView view, RewardItem rewardItem) {
       _resetAd();
       controller.runJavaScript('window.adWatched()');
     });
@@ -67,7 +68,9 @@ class BodyWidgetState extends State<BodyWidget> {
 
           _rewardedInterstitialAd = ad;
         },
-        onAdFailedToLoad: (LoadAdError error) {},
+        onAdFailedToLoad: (LoadAdError error) {
+          print('RewardedInterstitialAd failed to load: ${error}');
+        },
       ),
     );
   }
@@ -88,12 +91,12 @@ class BodyWidgetState extends State<BodyWidget> {
     super.dispose();
   }
 
-  changeFile(bool isSignedIn) async {
+  Future<File> changeFile(bool isSignedIn) async {
     final file = await localFile;
     return file.writeAsString(isSignedIn.toString());
   }
 
-  loadPage() {
+  Future<void> loadPage() {
     return noConnection
         ? controller.loadFlutterAsset('some.html')
         : controller.loadRequest(
@@ -101,7 +104,7 @@ class BodyWidgetState extends State<BodyWidget> {
           );
   }
 
-  recheckConnection() {
+  void recheckConnection() {
     Future.delayed(const Duration(seconds: 1), () {
       http.get(Uri.parse(lastUrl ?? initialUrl)).then((response) {
         if (response.statusCode == 200) {
@@ -117,18 +120,42 @@ class BodyWidgetState extends State<BodyWidget> {
     });
   }
 
-  onNoConnection() {
+  void onNoConnection() {
     controller.loadFlutterAsset('assets/some.html');
 
     recheckConnection();
   }
 
+  void setChannels() async {
+    bool cookieIsSet = false;
+
+    controller
+      ..addJavaScriptChannel('Ad', onMessageReceived: (JavaScriptMessage message) {
+        print('Ad request from webview');
+        _loadAd();
+        _showAdCallback();
+      })
+      ..addJavaScriptChannel('AuthChannel', onMessageReceived: (message) {
+        if (message.message == 'signIn') {
+          changeFile(true);
+        } else if (message.message == 'signOut') {
+          changeFile(false);
+        }
+      })
+      ..addJavaScriptChannel('OnLoadedChannel', onMessageReceived: (message) {
+        if (!cookieIsSet) {
+          cookieIsSet = true;
+          controller.runJavaScript('window.mobileCookies()');
+        }
+      });
+
+    areChannelsSet = true;
+  }
+
   @override
   Widget build(BuildContext context) {
-    String initialUrl =
-        isLoggedIn == true ? '$url/village.html' : '$url/index.html';
+    String initialUrl = isLoggedIn == true ? '$url/village.html' : '$url/index.html';
 
-    bool cookieIsSet = false;
     WebViewCookie cookie = const WebViewCookie(
       name: 'from',
       value: 'app',
@@ -144,27 +171,12 @@ class BodyWidgetState extends State<BodyWidget> {
             Uri.parse(lastUrl ?? initialUrl),
           );
 
+    if (!areChannelsSet) {
+      setChannels();
+    }
+
     return WebViewWidget(
       controller: controller
-        ..addJavaScriptChannel('Ad',
-            onMessageReceived: (JavaScriptMessage message) {
-          print('ad called');
-          _loadAd();
-          _showAdCallback();
-        })
-        ..addJavaScriptChannel('AuthChannel', onMessageReceived: (message) {
-          if (message.message == 'signIn') {
-            changeFile(true);
-          } else if (message.message == 'signOut') {
-            changeFile(false);
-          }
-        })
-        ..addJavaScriptChannel('OnLoadedChannel', onMessageReceived: (message) {
-          if (!cookieIsSet) {
-            cookieIsSet = true;
-            controller.runJavaScript('window.mobileCookies()');
-          }
-        })
         ..setJavaScriptMode(JavaScriptMode.unrestricted)
         ..setNavigationDelegate(
           NavigationDelegate(
@@ -177,8 +189,12 @@ class BodyWidgetState extends State<BodyWidget> {
             onPageFinished: (String url) {},
             onHttpError: (HttpResponseError error) {},
             onWebResourceError: (WebResourceError error) {
+              print('WebResourceError: ${error.description}, code: ${error.errorCode}');
               // No Connection errorCode
-              if (error.errorCode == -2) {
+              const androidNoConnectionCode = -2;
+              const iosNoConnectionCode = -1009;
+              if (error.errorCode == androidNoConnectionCode ||
+                  error.errorCode == iosNoConnectionCode) {
                 setState(() {
                   noConnection = true;
                 });
